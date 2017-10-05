@@ -89,11 +89,12 @@ mm_template_volume = (template_volume * (num_replicates+1))
 
 #Define bottom of PCR-plate wells
 PCR_plate_output_wells = [well.bottom() for well in output.rows('1', length=num_replicates)]
+mix_trough_output_wells = [well.bottom() for well in mix_trough.wells('A1', length=num_replicates)]
 
 #Make master mix
 p300_mc.transfer(
 	mm_water_volume, water_source, mix_trough.wells('A1', length=num_pcr_samples),
-	mix_after=(2, 50), blow_out=True)
+	blow_out=True, touch_tip=(-20))
 
 p300_mc.transfer(
 	mm_pcr_mix_volume, pcr_mix_source, mix_trough.wells('A1', length=num_pcr_samples),
