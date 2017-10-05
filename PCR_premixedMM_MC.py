@@ -119,4 +119,4 @@ p300_mc.mix(
 #Transfer master mixes to 96-well plate
 p300_mc.distribute(
 	total_pcr_volume, complete_mix_sources, PCR_plate_output_wells, 
-	new_tip='never', disposal_vol=10)
+	new_tip='never', disposal_vol=10, dispense_speed=300)
