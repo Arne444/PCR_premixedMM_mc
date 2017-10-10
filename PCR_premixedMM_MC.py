@@ -8,8 +8,8 @@
 #2 - transfer master mix to wells of a 96 wells plate using p300 multi-channel
 
 ###INPUT### PCR variables
-num_replicates = 10
-num_templates = 8
+num_replicates = 5
+num_templates = 10
 
 total_pcr_volume = 50
 master_mix_volume = 20
@@ -25,6 +25,7 @@ trash = containers.load('trash-box', 'A3')
 
 p200rack = containers.load('tiprack-200ul', 'C3', 'p200-rack')
 mc_p300rack = containers.load('tiprack-200ul', 'E1', 'mc-p300_rack')
+mc_p300rack2 = containers.load('tiprack-200ul', 'E2', 'mc-p300_rack2')
 
 #Create 8x12 PCR plate
 containers.create(
@@ -60,7 +61,7 @@ p200 = instruments.Pipette(
 #Define multichannel pipette
 p300_mc = instruments.Pipette(
 	trash_container=trash,
-	tip_racks=[mc_p300rack],
+	tip_racks=[mc_p300rack, mc_p300rack2],
 	min_volume=50,
 	max_volume=300,
 	axis="a",
@@ -68,8 +69,15 @@ p300_mc = instruments.Pipette(
 )
 
 #Define DNA volumes
+import math
+num_templates_nearest8 = int(math.ceil(num_templates / 8)) * 8
 template_volumes = [template_volume] * num_templates
 num_pcr_samples = len(template_volumes)
+
+num_templates2 = num_templates_nearest8 / 8
+num_templates3 = int(round(num_templates2))
+num_rows = [template_volume] * num_templates3
+num_rows2 = len(num_rows)
 
 #Define locations of PCR components
 water_source = source_trough.wells('A1')
@@ -77,7 +85,7 @@ pcr_mix_source = source_trough.wells('A2')
 F_primer_source = source_trough.wells('A3')
 R_primer_source = source_trough.wells('A4')
 template_sources = template_rack.wells('A1', length=num_pcr_samples)
-complete_mix_sources = mix_trough.wells('A1', length=num_pcr_samples)
+complete_mix_sources = mix_trough.rows('1', length=num_pcr_samples)
 
 #Define components of master mix
 total_mm_volume = (total_pcr_volume * (num_replicates+1))
@@ -87,30 +95,32 @@ mm_primer_volume = (primer_volume * (num_replicates+1))
 mm_primer_volume = (primer_volume * (num_replicates+1))
 mm_template_volume = (template_volume * (num_replicates+1))
 
-#Define bottom of PCR-plate wells
-PCR_plate_output_wells = [well.bottom() for well in output.rows('1', length=num_replicates)]
-mix_trough_output_wells = [well.bottom() for well in mix_trough.wells('A1', length=num_replicates)]
+#Define PCR-plate wells
+PCR_plate_output_wells = [well.bottom(1) for well in output.rows('1', length=num_replicates)]
+
+#Define mix wells
+mix_wells1 = [well.bottom() for well in mix_trough.rows('1', length=num_rows2)]
+mix_wells2 = [well.bottom() for well in mix_trough.wells('A1', length=num_pcr_samples)]
 
 #Make master mix
-p300_mc.transfer(
-	mm_water_volume, water_source, mix_trough.wells('A1', length=num_pcr_samples),
-	blow_out=True, touch_tip=(-20))
+p300_mc.distribute(
+	mm_water_volume, water_source, mix_wells1, blow_out=True)
 
 p300_mc.transfer(
-	mm_pcr_mix_volume, pcr_mix_source, mix_trough.wells('A1', length=num_pcr_samples),
-	mix_after=(2, 50), blow_out=True)
+	mm_pcr_mix_volume, pcr_mix_source, mix_wells1, mix_after=(2, 50), blow_out=True,
+	new_tip='always')
 
 p300_mc.transfer(
-	mm_primer_volume, F_primer_source, mix_trough.wells('A1', length=num_pcr_samples),
-	mix_after=(2, 50), blow_out=True)
+	mm_primer_volume, F_primer_source, mix_wells1, mix_after=(2, 50), blow_out=True,
+	new_tip='always')
 
 p300_mc.transfer(
-	mm_primer_volume, R_primer_source, mix_trough.wells('A1', length=num_pcr_samples),
-	mix_after=(2, 50), blow_out=True)
+	mm_primer_volume, R_primer_source, mix_wells1, mix_after=(2, 50), blow_out=True,
+	new_tip='always')
 
 p200.transfer(
-	mm_template_volume, template_sources, mix_trough.wells('A1', length=num_pcr_samples), 
-	mix_after=(2, 50), blow_out=True, new_tip='always')
+	mm_template_volume, template_sources, mix_wells2, mix_after=(2, 50), blow_out=True, 
+	new_tip='always')
 
 p300_mc.pick_up_tip()
 p300_mc.mix(
@@ -119,4 +129,4 @@ p300_mc.mix(
 #Transfer master mixes to 96-well plate
 p300_mc.distribute(
 	total_pcr_volume, complete_mix_sources, PCR_plate_output_wells, 
-	new_tip='never', disposal_vol=10, dispense_speed=300)
+	disposal_vol=10, dispense_speed=300)
